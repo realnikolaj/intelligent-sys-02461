@@ -296,8 +296,7 @@ for images, labels in test_loader:
     correct += (predicted == labels.type(torch.cuda.LongTensor)).sum()     # Increment the correct count
     
 print('Accuracy of the network on the 10K test images: ' + str(float(100 * float(correct) / total)) + "%")
-plt.plot(loss)
-plt.grid(True)
+
 ## Testing the CNN model
 #net.eval()
 #with torch.no_grad():
