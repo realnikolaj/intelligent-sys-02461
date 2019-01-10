@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data
+import pickle
+import os
 #import torchvision.datasets as dsets
 #import torchvision.transforms as transforms
 from torch.autograd import Variable
@@ -33,8 +35,8 @@ num_classes = num_circles_max - num_circles_min + 1
 num_epochs = 5        # The number of times entire dataset is trained
 batch_size = 100       # The size of input data took for one iteration
 learning_rate = 0.001  # The speed of convergence
-N = 10000              # Size of train dataset
-V = 10000                # Size of test dataset
+N = 10000          # Size of train dataset
+V = 1000                # Size of test dataset
 
 def create_image():
     area_min = 0.05
@@ -170,10 +172,86 @@ def create_dataset(N):
     
     return dataset
     
+# make new dataset, load old, or load most recent
+while True:
+    input_ = input("Generate new train and test data? load data? load most recent created data? (g/l/r): ")
+    if input_ == "g":
+        train_dataset = create_dataset(N)
+        test_dataset = create_dataset(V)
+        
+        NN = len(str(N).replace('.',''))-1
+        VV = len(str(V).replace('.',''))-1
+        np.savez("most_recent_created.npz",NN=NN,VV=VV,N=N,V=V,num_circles_max=num_circles_max)
+        
+        pickle_out = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"wb")
+        pickle.dump(train_dataset, pickle_out)
+        pickle_out.close()
+        
+        pickle_out = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"wb")
+        pickle.dump(test_dataset, pickle_out)
+        pickle_out.close()
+        break
+        
+    if input_ == "l":
+        while True: 
+            dir_list = os.listdir(os.getcwd())
+            dir_array = np.array([dir_list])
+            comp_file_list = []
+            
+            for i in dir_list:
+                if i[-7:] == ".pickle":
+                    comp_file_list = comp_file_list + [i]
+                    
+            if len(comp_file_list) > 0: 
+                print("\nThe directory contains the follwoing compatible files: ")
+                for i in (comp_file_list):
+                    print(i)
+                break
+                    
+            else: 
+                print("The directory contains no compatible files, the script will probaly crash now.")
+                break
+        
+        while True:
+            train_input = input("Write the name of the training data (without file extension): ")
+            if train_input+".pickle" in comp_file_list:
+                
+                pickle_in = open(train_input+".pickle","rb")
+                train_dataset = pickle.load(pickle_in)
+                break
+        
+        while True:
+            test_input = input("Write the name of the test data (without file extension): ")
+            if test_input+".pickle" in comp_file_list:
+                
+                pickle_in = open(test_input+".pickle","rb")
+                test_dataset = pickle.load(pickle_in)
+                break
 
-# Download dataset (we actually create it on the fly)
-train_dataset = create_dataset(N)
-test_dataset = create_dataset(V)
+        break
+    
+    if input_ == "r":
+        tmp = np.load("most_recent_created.npz")
+        NN = int(tmp["NN"])
+        VV = int(tmp["VV"])
+        N = int(tmp["N"])
+        V = int(tmp["V"])
+        num_circles_max = int(tmp["num_circles_max"])
+        
+        pickle_in = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"rb")
+        train_dataset = pickle.load(pickle_in)
+        
+        pickle_in = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"rb")
+        test_dataset = pickle.load(pickle_in)
+        
+        print("\nTrain data file is: ")
+        print("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max))
+        print("\nTest data file is")
+        print("test{}e{}_{}.pickle\n\n".format(int(V/10**(VV)),VV,num_circles_max))
+        
+        break
+        
+        
     
 # Load the dataset with the DataLoader utility (giving us batches and other options)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -295,7 +373,7 @@ for images, labels in test_loader:
     total += labels.size(0)                    # Increment the total count
     correct += (predicted == labels.type(torch.cuda.LongTensor)).sum()     # Increment the correct count
     
-print('Accuracy of the network on the 10K test images: ' + str(float(100 * float(correct) / total)) + "%")
+print('Accuracy of the network on the {}K test images: '.format(int(N/1000)) + str(float(100 * float(correct) / total)) + "%")
 
 ## Testing the CNN model
 #net.eval()
