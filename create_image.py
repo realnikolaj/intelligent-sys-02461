@@ -24,7 +24,7 @@ np.set_printoptions(suppress=True)
 # To switch between running on cpu and GPU (CUDA)
 # 0. CPU
 # 1. GPU 
-Acceleration_device = 1 
+Acceleration_device = 1
 
 
 # Choose network from list:
@@ -50,11 +50,11 @@ num_circles_min = 0
 num_circles_max = 10
 num_classes = num_circles_max + 1
    
-num_epochs = 100       # The number of times entire dataset is trained
-batch_size = 100       # The size of input data taken for one iteration
+num_epochs = 3       # The number of times entire dataset is trained
+batch_size = 50       # The size of input data taken for one iteration
 learning_rate = 0.0001  # The speed of convergence
-N = 10000               # Size of train dataset
-V = 100               # Size of test dataset
+N = 100000               # Size of train dataset
+V = 10000               # Size of test dataset
 
 
 # Print which network we are running (more can be added)
@@ -270,10 +270,10 @@ while True:
         num_circles_max = int(tmp["num_circles_max"])
         
         pickle_in = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"rb")
-        train_dataset = pickle.load(pickle_in)
+        train_dataset, N = pickle.load(pickle_in)
         
         pickle_in = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"rb")
-        test_dataset = pickle.load(pickle_in)
+        test_dataset, V = pickle.load(pickle_in)
         
         print("\nTrain data file is: ")
         print("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max))
