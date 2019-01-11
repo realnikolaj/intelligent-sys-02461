@@ -54,11 +54,8 @@ num_epochs = 100       # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.0001  # The speed of convergence
 N = 10000               # Size of train dataset
-<<<<<<< HEAD
 V = 100               # Size of test dataset
-=======
-V = 100                # Size of test dataset
->>>>>>> 242ac458a6937553239b51ead02e46806d6b03f1
+
 
 # Print which network we are running (more can be added)
 if active_network == 1:
