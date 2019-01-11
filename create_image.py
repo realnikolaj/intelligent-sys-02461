@@ -54,7 +54,7 @@ num_epochs = 100       # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.0001  # The speed of convergence
 N = 10000               # Size of train dataset
-V = 10000                # Size of test dataset
+V = 100               # Size of test dataset
 
 # Print which network we are running (more can be added)
 if active_network == 1:
@@ -204,7 +204,6 @@ def create_dataset(N):
     return dataset
     
 
-# make new dataset, load old, or load most recent
 while True:
     input_ = input("Generate new train and test data? load data? load most recent created data? (g/l/r): ")
     if input_ == "g":
@@ -216,11 +215,11 @@ while True:
         np.savez("most_recent_created.npz",NN=NN,VV=VV,N=N,V=V,num_circles_max=num_circles_max)
         
         pickle_out = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"wb")
-        pickle.dump(train_dataset, pickle_out)
+        pickle.dump([train_dataset,N], pickle_out)
         pickle_out.close()
         
         pickle_out = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"wb")
-        pickle.dump(test_dataset, pickle_out)
+        pickle.dump([test_dataset,V], pickle_out)
         pickle_out.close()
         break
         
@@ -249,7 +248,7 @@ while True:
             if train_input+".pickle" in comp_file_list:
                 
                 pickle_in = open(train_input+".pickle","rb")
-                train_dataset = pickle.load(pickle_in)
+                train_dataset,N = pickle.load(pickle_in)
                 break
         
         while True:
@@ -257,7 +256,7 @@ while True:
             if test_input+".pickle" in comp_file_list:
                 
                 pickle_in = open(test_input+".pickle","rb")
-                test_dataset = pickle.load(pickle_in)
+                test_dataset,V = pickle.load(pickle_in)
                 break
 
         break
