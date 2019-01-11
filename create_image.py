@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.utils.model_zoo as model_zoo
+import pickle
+import os
 #import torchvision.datasets as dsets
 #import torchvision.transforms as transforms
 from torch.autograd import Variable
@@ -28,6 +30,14 @@ np.set_printoptions(suppress=True)
 # 7. resnet18
 active_network = 6
 
+# CUDA 
+# Change value 0 or 1
+# To switch between running on cpu and GPU (CUDA)
+# 0. CPU
+# 1. GPU 
+Acceleration_device = 0
+
+
 # Indicate if images needs flattening before being fed to network. 
 # They need to be flattened if we use FNN.
 if active_network in [1]:
@@ -36,7 +46,9 @@ else:
     needs_flattening = False
 
 # Initialize Hyper-parameters
-picture_dimension = 28
+
+picture_dimension = 28 # Default is 28
+
 input_size = picture_dimension**2       # The image size = dimension squared
 hidden_size = picture_dimension**2     # The number of nodes at the hidden layer
 
@@ -48,8 +60,10 @@ num_classes = num_circles_max + 1
 num_epochs = 2         # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.001  # The speed of convergence
-N = 10000            # Size of train dataset
-V = 10000          # Size of test dataset
+N = 1000            # Size of train dataset
+V = 1000        # Size of test dataset
+
+
 
 # Print which network we are running (more can be added)
 if active_network == 1:
@@ -66,6 +80,7 @@ if active_network == 6:
     print("Running CNN_mini_VGG")
 if active_network == 7:
     print("Running Resnet18")
+
 
 def create_image():
     area_min = 0.05
@@ -173,6 +188,9 @@ def create_dataset(N):
     picture_list = []
     label_list = []
     for i in range(N):
+        
+        # Feedback for process on large images
+
         # Create one picture
         picture, label = create_image()
         
@@ -203,9 +221,83 @@ def create_dataset(N):
     return dataset
     
 
-# Download dataset (we actually create it on the fly)
-train_dataset = create_dataset(N)
-test_dataset = create_dataset(V)
+while True:
+    input_ = input("Generate new train and test data? load data? load most recent created data? (g/l/r): ")
+    if input_ == "g":
+        train_dataset = create_dataset(N)
+        test_dataset = create_dataset(V)
+        
+        NN = len(str(N).replace('.',''))-1
+        VV = len(str(V).replace('.',''))-1
+        np.savez("most_recent_created.npz",NN=NN,VV=VV,N=N,V=V,num_circles_max=num_circles_max)
+        
+        pickle_out = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"wb")
+        pickle.dump([train_dataset,N], pickle_out)
+        pickle_out.close()
+        
+        pickle_out = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"wb")
+        pickle.dump([test_dataset,V], pickle_out)
+        pickle_out.close()
+        break
+        
+    if input_ == "l":
+        while True: 
+            dir_list = os.listdir(os.getcwd())
+            dir_array = np.array([dir_list])
+            comp_file_list = []
+            
+            for i in dir_list:
+                if i[-7:] == ".pickle":
+                    comp_file_list = comp_file_list + [i]
+                    
+            if len(comp_file_list) > 0: 
+                print("\nThe directory contains the follwoing compatible files: ")
+                for i in (comp_file_list):
+                    print(i)
+                break
+                    
+            else: 
+                print("The directory contains no compatible files, the script will probaly crash now.")
+                break
+        
+        while True:
+            train_input = input("Write the name of the training data (without file extension): ")
+            if train_input+".pickle" in comp_file_list:
+                
+                pickle_in = open(train_input+".pickle","rb")
+                train_dataset,N = pickle.load(pickle_in)
+                break
+        
+        while True:
+            test_input = input("Write the name of the test data (without file extension): ")
+            if test_input+".pickle" in comp_file_list:
+                
+                pickle_in = open(test_input+".pickle","rb")
+                test_dataset,V = pickle.load(pickle_in)
+                break
+
+        break
+    
+    if input_ == "r":
+        tmp = np.load("most_recent_created.npz")
+        NN = int(tmp["NN"])
+        VV = int(tmp["VV"])
+        N = int(tmp["N"])
+        V = int(tmp["V"])
+        num_circles_max = int(tmp["num_circles_max"])
+        
+        pickle_in = open("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max),"rb")
+        train_dataset, N = pickle.load(pickle_in)
+        
+        pickle_in = open("test{}e{}_{}.pickle".format(int(V/10**(VV)),VV,num_circles_max),"rb")
+        test_dataset, V = pickle.load(pickle_in)
+        
+        print("\nTrain data file is: ")
+        print("train{}e{}_{}.pickle".format(int(N/10**(NN)),NN,num_circles_max))
+        print("\nTest data file is")
+        print("test{}e{}_{}.pickle\n\n".format(int(V/10**(VV)),VV,num_circles_max))
+        
+        break
     
 # Load the dataset with the DataLoader utility (giving us batches and other options)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -253,6 +345,7 @@ class CNN(nn.Module):
         self.drop_out = nn.Dropout()
         self.fc1 = nn.Linear(K * K * (2*N), 1000)
         self.fc2 = nn.Linear(1000, num_classes)
+
 
     def forward(self, x):
         out = self.layer1(x)
@@ -634,13 +727,26 @@ if active_network == 7:
 # Enable GPU
 # net.cuda()    # You can comment out this line to disable GPU
 
+
 # Choose the Loss Function and Optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
 
+
+# Sets appropriate device for acceleration CPU v GPU, variable set in beginning of script
+if Acceleration_device == 0:
+    device = torch.device('cpu')
+    tensor_type = torch.LongTensor
+    
+else:
+    device = torch.device("cuda")
+    net.cuda()
+    tensor_type = torch.cuda.LongTensor
+
+
 def lr_scheduler(optimizer, epoch, init_lr=learning_rate, lr_decay_epoch=1):
-    """Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
+    """Decay learning rate by a factor of 0.3 every lr_decay_epoch epochs."""
     lr = init_lr * (0.3**(epoch // lr_decay_epoch))
 
     if epoch % lr_decay_epoch == 0:
@@ -650,27 +756,31 @@ def lr_scheduler(optimizer, epoch, init_lr=learning_rate, lr_decay_epoch=1):
         param_group['lr'] = lr
 
     return optimizer
-
+   
 # Train the network
 total_step = len(train_loader)
 loss_list = []
+test_loss_list = []
 accuracy_list = []
+test_accuracy_list = []
 for epoch in range(num_epochs):
-    
-    # Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs.
+    # Decay learning rate by a factor of 0.3 every lr_decay_epoch epochs.
     lr_scheduler(optimizer, epoch, init_lr=learning_rate, lr_decay_epoch=1)
-    
+        
     for i, (images, labels) in enumerate(train_loader):
         # Flatten the images if we need to before feeding them to the network.
         if needs_flattening == True:
-            images = images.view(-1, picture_dimension * picture_dimension)
+            images = images.view(-1, picture_dimension * picture_dimension).to(device)
         
         # Wrap with torch.autograd.variable (may have some use, but seems unnecessary at the moment)
-        images = Variable(images).float()           
-        labels = Variable(labels).type(torch.LongTensor)
+        images = Variable(images).float()
+        images = images.to(device)           
+        labels = Variable(labels).type(tensor_type)
+        labels = labels.to(device)
         
         # Run the forward pass
         outputs = net(images)                           # Forward pass: compute the output class given an image
+        outputs = outputs.to(device)
         loss = criterion(outputs, labels)
         loss_list.append(loss.item())
 
@@ -682,7 +792,7 @@ for epoch in range(num_epochs):
         # Track the accuracy
         total = labels.size(0)
         _, predicted = torch.max(outputs.data, 1)
-        correct = (predicted == labels.type(torch.LongTensor)).sum().item()
+        correct = (predicted == labels.type(tensor_type)).sum().item()
         accuracy_list.append(correct / total)
         
         # Print info for every 100 steps
@@ -707,14 +817,34 @@ with torch.no_grad():
         # Flatten the images if we need to before feeding them to the network.
         if needs_flattening == True:
             images = images.view(-1, picture_dimension * picture_dimension)
+            images = images.to(device)
                 
-        outputs = net(images.float())
+#        outputs = net(images.float().to(device))
+#        outputs = outputs.to(device)
+#        test_loss = criterion(outputs, labels)
+#        test_loss_list.append(test_loss.item())
         _, predicted = torch.max(outputs.data, 1)  # Choose the best class from the output: The class with the best score
         total += labels.size(0)                    # Increment the total count
-        correct += (predicted == labels.type(torch.LongTensor)).sum().item()     # Increment the correct count
+        correct += (predicted == labels.type(tensor_type)).sum().item()     # Increment the correct count
+#        accuracy_list.append(correct / total)
         
     print('Accuracy of the network on the 10K test images: ' + str(float(100 * float(correct) / total)) + "%")
 
+# Defining plots
+#epoch_count = 
+fig, (ax1, ax2) = plt.subplots(nrows=2)
+
+ax1.plot(loss_list, 'r-')
+#ax1.plot(test_loss_list, 'b-')
+ax1.set(title='model loss', xlabel='epoch', ylabel='loss')
+ax1.legend()
+
+ax2.plot(accuracy_list, 'r-')
+#ax2.plot(test_accuracy_list, 'b-')
+ax2.set(title='Accuracy', xlabel='epoch', ylabel='accuracy')
+ax2.legend()
+
+plt.show
 
 # Save the network and plot
 #torch.save(net.state_dict(), MODEL_STORE_PATH + 'conv_net_model.ckpt')
@@ -744,17 +874,19 @@ def demonstrate_network():
         for images, labels in test_loader:
             # Flatten the images if we need to before feeding them to the network.
             if needs_flattening == True:
-                images = images.view(-1, picture_dimension * picture_dimension)
-            
-            outputs = net(images.float())
+                images = images.view(-1, picture_dimension * picture_dimension).to(device)
+
+            outputs = net(images.float().to(device))
+            outputs = outputs.to(device)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
-            correct += (predicted == labels.type(torch.LongTensor)).sum().item()
+            correct += (predicted == labels.type(tensor_type)).sum().item()
+
 
     print('Test Accuracy of the model on the 1 single test image: {} %'.format((correct / total) * 100))
 
     print("Ground truth is " + str(label) + " circles.")
     print("Network estimate is... " + str(int(predicted)))
+
     print(outputs.data)
-    
-    
+
