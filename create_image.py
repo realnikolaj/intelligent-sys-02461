@@ -13,30 +13,59 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 import pickle
+import os
 #import torchvision.datasets as dsets
 #import torchvision.transforms as transforms
 from torch.autograd import Variable
 np.set_printoptions(suppress=True)
 
+# CUDA 
+# Change value 0 or 1
+# To switch between running on cpu and GPU (CUDA)
+# 1 is for GPU and 0 is for CPU
+Acceleration_device = 1 
+
+
+# Choose network from list:
+# 1. FNN
+# 2. CNN
+# 3. CNN_4
+active_network = 2
+
+# Indicate if images needs flattening before being fed to network. 
+# They need to be flattened if we use FNN.
+if active_network in [1]:
+    needs_flattening = True
+else:
+    needs_flattening = False
+
 # Initialize Hyper-parameters
-picture_dimension = 28
-input_size = picture_dimension**2       # The image size = 28 x 28 = 784
-hidden_size = 784      # The number of nodes at the hidden layer
+picture_dimension = 128 # Changed from 28
+input_size = picture_dimension**2       # The image size = dimension squared
+hidden_size = picture_dimension**2     # The number of nodes at the hidden layer
 
 # number of circles and classes
 num_circles_min = 0 
-num_circles_max = 15
-num_classes = num_circles_max - num_circles_min + 1    
+num_circles_max = 100
+num_classes = num_circles_max + 1
    
-num_epochs = 5        # The number of times entire dataset is trained
-batch_size = 100       # The size of input data took for one iteration
-learning_rate = 0.001  # The speed of convergence
-N = 100000              # Size of train dataset
+num_epochs = 1       # The number of times entire dataset is trained
+batch_size = 100       # The size of input data taken for one iteration
+learning_rate = 0.0001  # The speed of convergence
+N = 200000         # Size of train dataset
 V = 10000                # Size of test dataset
+
+# Print which network we are running (more can be added)
+if active_network == 1:
+    print("Running FNN")
+if active_network == 2:
+    print("Running CNN")
+if active_network == 3:
+    print("Running CNN_4")
 
 def create_image():
     area_min = 0.05
-    area_max = 0.10
+    area_max = 0.20
     
     min_circle_area = 0.2 #minimum area of circle relative to the max 1
     
@@ -103,8 +132,7 @@ def create_image():
             if looking_for_centrum == False:
                 circle_data[i,3] = x
                 circle_data[i,4] = y
-                
-                
+                   
             count += 1
             if count == stop:
                 print("couldn't place circle")
@@ -116,6 +144,8 @@ def create_image():
         x = int(circle_data[i,3])
         y = int(circle_data[i,4])
         
+        # Checking all pixels in a sqared box around the circle. If their 
+        # distance to the center is less than the radius, we color the pixel.
         box_size = 2 * R + 1        
         
         for j in range(box_size):
@@ -256,8 +286,8 @@ train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=batch_size,
                                           shuffle=False)
-
-# Feedforward Neural Network Model Structure
+    
+# FNN, Feedforward Neural Network 
 class Net(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
         super(Net, self).__init__()                    # Inherited from the parent class nn.Module
@@ -275,120 +305,194 @@ class Net(nn.Module):
         out = self.fc3(out)
         return out
 
-##Convolutional Neural Network
-#class ConvNet(nn.Module):
-#    def __init__(self):
-#        super(ConvNet, self).__init__()
-#        self.layer1 = nn.Sequential(
-#            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),
-#            nn.ReLU(),
-#            nn.MaxPool2d(kernel_size=2, stride=2))
-#        self.layer2 = nn.Sequential(
-#            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
-#            nn.ReLU(),
-#            nn.MaxPool2d(kernel_size=2, stride=2))
-#        self.drop_out = nn.Dropout()
-#        self.fc1 = nn.Linear(7 * 7 * 64, 1000)
-#        self.fc2 = nn.Linear(1000, num_classes)
-#
-#    def forward(self, x):
-#        out = self.layer1(x)
-#        out = self.layer2(out)
-#        out = out.reshape(out.size(0), -1)
-#        out = self.drop_out(out)
-#        out = self.fc1(out)
-#        out = self.fc2(out)
-#        return out
+# CNN, Convolutional Neural Network
+N = 4
+K = picture_dimension // 4
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(N, 2 * N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        self.drop_out = nn.Dropout()
+        self.fc1 = nn.Linear(K * K * (2*N), 1000)
+        self.fc2 = nn.Linear(1000, num_classes)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.reshape(out.size(0), -1)
+        out = self.drop_out(out)
+        out = self.fc1(out)
+        out = self.fc2(out)
+        return out
+    
+# CNN_4, Convolutional Neural Network
+N = 24
+K = picture_dimension // 4
+class CNN_4(nn.Module):
+    def __init__(self):
+        super(CNN_4, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(N, 2*N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU())
+            
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(2*N, 2*N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU())
+        
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(2*N, 2*N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        
+        self.layer5 = nn.Sequential(
+            nn.Conv2d(2*N, 4*N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU())
+        
+        self.layer6 = nn.Sequential(
+            nn.Conv2d(4*N, 4*N, kernel_size=3, stride=1, padding=1),
+            nn.ReLU())
+        
+        self.drop_out = nn.Dropout()
+        self.fc1 = nn.Linear(K * K * (4*N), 1000)
+        self.fc2 = nn.Linear(1000, num_classes)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.layer5(out)
+        out = self.layer6(out)
+        out = out.reshape(out.size(0), -1)
+        out = self.drop_out(out)
+        out = self.fc1(out)
+        out = self.fc2(out)
+        return out
 
 # Instantiate the network
-net = Net(input_size, hidden_size, num_classes)
-#net = ConvNet()
-
-# Enable GPU
-#net.cuda()    # You can comment out this line to disable GPU
+if active_network == 1:
+    net = Net(input_size, hidden_size, num_classes)
+    
+if active_network == 2:
+    net = CNN()
+    
+if active_network == 3:
+    net = CNN_4()
 
 # Choose the Loss Function and Optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
 
-# Train the FNN Model
-for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):   # Load a batch of images with its (index, data, class)
-        images = Variable(images.view(-1, 28*28)).float()           # Convert torch tensor to Variable: change image from a vector of size 784 to a matrix of 28 x 28
-        labels = Variable(labels).type(torch.LongTensor)
-        optimizer.zero_grad()                             # Intialize the hidden weight to all zeros
-        outputs = net(images)                             # Forward pass: compute the output class given a image
-        loss = criterion(outputs, labels)                 # Compute the loss: difference between the output class and the pre-given label
-        loss.backward()                                   # Backward pass: compute the weight
-        optimizer.step()                                  # Optimizer: update the weights of hidden nodes
-        
-        if (i+1) % 100 == 0:                              # Logging
-            print('Epoch [%d/%d], Step [%d/%d], Loss: %.4f'
-                 %(epoch+1, num_epochs, i+1, len(train_dataset)//batch_size, loss.data))
 
-## Train the CNN model
-#total_step = len(train_loader)
-#loss_list = []
-#acc_list = []
-#for epoch in range(num_epochs):
-#    for i, (images, labels) in enumerate(train_loader):
-#        # Run the forward pass
-#        outputs = net(images.float())
-#        loss = criterion(outputs, labels.type(torch.LongTensor))
-#        loss_list.append(loss.item())
-#
-#        # Backprop and perform Adam optimisation
-#        optimizer.zero_grad()
-#        loss.backward()
-#        optimizer.step()
-#
-#        # Track the accuracy
-#        total = labels.size(0)
-#        _, predicted = torch.max(outputs.data, 1)
-#        correct = (predicted == labels.type(torch.LongTensor)).sum().item()
-#        acc_list.append(correct / total)
-#
-#        if (i + 1) % 100 == 0:
-#            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:2f} %'
-#                  .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
-#                          100*correct / total))
 
-# Testing the FNN Model
-correct = 0
-total = 0
-for images, labels in test_loader:
-    images = Variable(images.view(-1, 28*28)).float() 
-    outputs = net(images)
-    _, predicted = torch.max(outputs.data, 1)  # Choose the best class from the output: The class with the best score
-    total += labels.size(0)                    # Increment the total count
-    correct += (predicted == labels.type(torch.LongTensor)).sum()     # Increment the correct count
+# Sets appropriate device for acceleration CPU v GPU, variable set in beginning of script
+if Acceleration_device == 1:
+    device = torch.device("cuda")
+    net.cuda()
+    tensor_type = torch.cuda.LongTensor
+elif Acceleration_device == 0:
+    device = torch.device('cpu')
+    tensor_type = torch.LongTensor
+else:
+    print('Select appropriate device, ie. CPU og GPU in the beginning of the script')
     
-print('Accuracy of the network on the {}K test images: '.format(int(N/1000)) + str(float(100 * float(correct) / total)) + "%")
+    
+# Train the network
+total_step = len(train_loader)
+loss_list = []
+accuracy_list = []
+for epoch in range(num_epochs):
+    for i, (images, labels) in enumerate(train_loader):
+        # Flatten the images if we need to before feeding them to the network.
+        if needs_flattening == True:
+            images = images.view(-1, picture_dimension * picture_dimension).to(device)
+        
+        # Wrap with torch.autograd.variable (may have some use, but seems unnecessary at the moment)
+        images = Variable(images).float()
+        images = images.to(device)           
+        labels = Variable(labels).type(tensor_type)
+        labels = labels.to(device)
+        
+        # Run the forward pass
+        outputs = net(images)                           # Forward pass: compute the output class given an image
+        outputs = outputs.to(device)
+        loss = criterion(outputs, labels)
+        loss_list.append(loss.item())
 
-## Testing the CNN model
-#net.eval()
-#with torch.no_grad():
-#    correct = 0
-#    total = 0
-#    for images, labels in test_loader:
-#        outputs = net(images.float())
-#        _, predicted = torch.max(outputs.data, 1)
-#        total += labels.size(0)
-#        correct += (predicted == labels.type(torch.LongTensor)).sum().item()
-#
-#    print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
+        # Backprop and perform Adam optimisation
+        optimizer.zero_grad()                           # Intialize the hidden weight to all zeros
+        loss.backward()                                 # Backward pass: compute the weight
+        optimizer.step()                                # Optimizer: update the weights of hidden nodes
 
-# Save the model and plot
+        # Track the accuracy
+        total = labels.size(0)
+        _, predicted = torch.max(outputs.data, 1)
+        correct = (predicted == labels.type(tensor_type)).sum().item()
+        accuracy_list.append(correct / total)
+        
+        # Print info for every 100 steps
+        if (i + 1) % 100 == 0:
+            print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:.0f} %'
+                  .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
+                          100*correct / total))
+
+# Test the network:
+            
+# net.eval() will notify all our layers that we are in eval mode,
+# that way, batchnorm or dropout layers will work in eval model instead of training mode.
+net.eval()
+
+# torch.no_grad() impacts the autograd engine and deactivates it.
+# It will reduce memory usage and speed up computations but we won’t be able to backprop (which we
+# don't do anyway during test).
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for images, labels in test_loader:
+        # Flatten the images if we need to before feeding them to the network.
+        if needs_flattening == True:
+            images = images.view(-1, picture_dimension * picture_dimension)
+            images = images.to(device)
+                
+        outputs = net(images.float().to(device))
+        outputs = outputs.to(device)
+        _, predicted = torch.max(outputs.data, 1)  # Choose the best class from the output: The class with the best score
+        total += labels.size(0)                    # Increment the total count
+        correct += (predicted == labels.type(tensor_type)).sum().item()     # Increment the correct count
+        
+    print('Accuracy of the network on the 10K test images: ' + str(float(100 * float(correct) / total)) + "%")
+
+fig, ax = plt.subplots()
+
+ax.plot(loss_list)
+ax.grid()
+plt.show
+# Save the network and plot
 #torch.save(net.state_dict(), MODEL_STORE_PATH + 'conv_net_model.ckpt')
-
-def demonstrate_FFN():
+    
+def demonstrate_network():
     # Create one picture
     picture, label = create_image()
     
     # Show picture
     plt.imshow(picture)
     plt.show()
+    
+    # Convert picture from (nxn) to (1xnxn) shape (suitable for torch format)
+    picture = picture[np.newaxis, ...]
     
     # Turn picture into torch format
     our_data = torch.from_numpy(np.array([picture]))
@@ -398,50 +502,23 @@ def demonstrate_FFN():
                                           batch_size=1,
                                           shuffle=False)
     
-    correct = 0
-    total = 0
-    predicted = 0
-    for images, labels in test_loader:
-        images = Variable(images.view(-1, 28*28)).float() 
-        outputs = net(images)
-        _, predicted = torch.max(outputs.data, 1)  # Choose the best class from the output: The class with the best score
-        
-        total += labels.size(0)                    # Increment the total count
-        correct += (predicted == labels.type(torch.LongTensor)).sum()     # Increment the correct count
-        
-    print('Accuracy of the network on the 1 test image: %f %%' % (100. * correct / total)) 
-    
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in test_loader:
+            # Flatten the images if we need to before feeding them to the network.
+            if needs_flattening == True:
+                images = images.view(-1, picture_dimension * picture_dimension).to(device)
+
+            
+            outputs = net(images.float())
+            outputs = outputs.to(device)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels.type(tensor_type)).sum().item()
+
+    print('Test Accuracy of the model on the 1 single test image: {} %'.format((correct / total) * 100))
+
     print("Ground truth is " + str(label) + " circles.")
     print("Network estimate is... " + str(int(predicted)))
     print(outputs.data)
-    
-#def demonstrate_CNN():
-#    # Create one picture
-#    picture, label = create_image()
-#    
-#    # Show picture
-#    plt.imshow(picture)
-#    plt.show()
-#    
-#    # Turn picture into torch format
-#    our_data = torch.from_numpy(np.array([picture]))
-#    our_labels = torch.from_numpy(np.array([label]))
-#    test_dataset = torch.utils.data.TensorDataset(our_data, our_labels)
-#    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
-#                                          batch_size=1,
-#                                          shuffle=False)
-#    
-#    with torch.no_grad():
-#        correct = 0
-#        total = 0
-#        for images, labels in test_loader:
-#            outputs = net(images.float())
-#            _, predicted = torch.max(outputs.data, 1)
-#            total += labels.size(0)
-#            correct += (predicted == labels.type(torch.LongTensor)).sum().item()
-#
-#    print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
-#
-#    print("Ground truth is " + str(label) + " circles.")
-#    print("Network estimate is... " + str(int(predicted)))
-#    print(outputs.data)
