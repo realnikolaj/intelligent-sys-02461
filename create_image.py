@@ -54,7 +54,11 @@ num_epochs = 100       # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.0001  # The speed of convergence
 N = 10000               # Size of train dataset
+<<<<<<< HEAD
 V = 100               # Size of test dataset
+=======
+V = 100                # Size of test dataset
+>>>>>>> 242ac458a6937553239b51ead02e46806d6b03f1
 
 # Print which network we are running (more can be added)
 if active_network == 1:
@@ -172,8 +176,7 @@ def create_dataset(N):
     for i in range(N):
         
         # Feedback for process on large images
-        if picture_dimension > 28:
-            print('Creating picture no. {}'.format(i))
+
         # Create one picture
         picture, label = create_image()
         
@@ -403,15 +406,16 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 
 # Sets appropriate device for acceleration CPU v GPU, variable set in beginning of script
-if Acceleration_device == 1:
+if Acceleration_device == 0:
+    device = torch.device('cpu')
+    tensor_type = torch.LongTensor
+    
+
+else:
     device = torch.device("cuda")
     net.cuda()
     tensor_type = torch.cuda.LongTensor
-elif Acceleration_device == 0:
-    device = torch.device('cpu')
-    tensor_type = torch.LongTensor
-else:
-    print('Select appropriate device, ie. CPU og GPU in the beginning of the script')
+
     
     
 # Train the network
