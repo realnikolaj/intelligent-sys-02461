@@ -22,7 +22,8 @@ np.set_printoptions(suppress=True)
 # CUDA 
 # Change value 0 or 1
 # To switch between running on cpu and GPU (CUDA)
-# 1 is for GPU and 0 is for CPU
+# 0. CPU
+# 1. GPU 
 Acceleration_device = 1 
 
 
@@ -30,7 +31,7 @@ Acceleration_device = 1
 # 1. FNN
 # 2. CNN
 # 3. CNN_4
-active_network = 2
+active_network = 3
 
 # Indicate if images needs flattening before being fed to network. 
 # They need to be flattened if we use FNN.
@@ -40,19 +41,19 @@ else:
     needs_flattening = False
 
 # Initialize Hyper-parameters
-picture_dimension = 128 # Changed from 28
+picture_dimension = 28 # Default is 28
 input_size = picture_dimension**2       # The image size = dimension squared
 hidden_size = picture_dimension**2     # The number of nodes at the hidden layer
 
 # number of circles and classes
 num_circles_min = 0 
-num_circles_max = 100
+num_circles_max = 10
 num_classes = num_circles_max + 1
    
-num_epochs = 1       # The number of times entire dataset is trained
+num_epochs = 100       # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.0001  # The speed of convergence
-N = 200000         # Size of train dataset
+N = 10000               # Size of train dataset
 V = 10000                # Size of test dataset
 
 # Print which network we are running (more can be added)
@@ -169,6 +170,10 @@ def create_dataset(N):
     picture_list = []
     label_list = []
     for i in range(N):
+        
+        # Feedback for process on large images
+        if picture_dimension > 28:
+            print('Creating picture no. {}'.format(i))
         # Create one picture
         picture, label = create_image()
         
@@ -413,7 +418,9 @@ else:
 # Train the network
 total_step = len(train_loader)
 loss_list = []
+test_loss_list = []
 accuracy_list = []
+test_accuracy_list = []
 for epoch in range(num_epochs):
     for i, (images, labels) in enumerate(train_loader):
         # Flatten the images if we need to before feeding them to the network.
@@ -467,19 +474,35 @@ with torch.no_grad():
             images = images.view(-1, picture_dimension * picture_dimension)
             images = images.to(device)
                 
-        outputs = net(images.float().to(device))
-        outputs = outputs.to(device)
+#        outputs = net(images.float().to(device))
+#        outputs = outputs.to(device)
+#        test_loss = criterion(outputs, labels)
+#        test_loss_list.append(test_loss.item())
         _, predicted = torch.max(outputs.data, 1)  # Choose the best class from the output: The class with the best score
         total += labels.size(0)                    # Increment the total count
         correct += (predicted == labels.type(tensor_type)).sum().item()     # Increment the correct count
+#        accuracy_list.append(correct / total)
         
     print('Accuracy of the network on the 10K test images: ' + str(float(100 * float(correct) / total)) + "%")
 
-fig, ax = plt.subplots()
+# Defining plots
+#epoch_count = 
+fig, (ax1, ax2) = plt.subplots(nrows=2)
 
-ax.plot(loss_list)
-ax.grid()
+ax1.plot(loss_list, 'r-')
+#ax1.plot(test_loss_list, 'b-')
+ax1.set(title='model loss', xlabel='epoch', ylabel='loss')
+ax1.legend()
+
+ax2.plot(accuracy_list, 'r-')
+#ax2.plot(test_accuracy_list, 'b-')
+ax2.set(title='Accuracy', xlabel='epoch', ylabel='accuracy')
+ax2.legend()
+
+
 plt.show
+
+
 # Save the network and plot
 #torch.save(net.state_dict(), MODEL_STORE_PATH + 'conv_net_model.ckpt')
     
@@ -511,7 +534,7 @@ def demonstrate_network():
                 images = images.view(-1, picture_dimension * picture_dimension).to(device)
 
             
-            outputs = net(images.float())
+            outputs = net(images.float().to(device))
             outputs = outputs.to(device)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
