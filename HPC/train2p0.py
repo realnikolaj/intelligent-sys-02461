@@ -51,7 +51,7 @@ num_circles_min = 0
 num_circles_max = 20
 num_classes = num_circles_max + 1
    
-num_epochs = 100           # The number of times entire dataset is trained
+num_epochs = 10           # The number of times entire dataset is trained
 lr_decay_epoch = 100     # How many epochs before changing learning rate
 learning_rate = 0.001  # The speed of convergence
 batch_size = 100          # The size of input data taken for one iteration

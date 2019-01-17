@@ -299,7 +299,7 @@ def create_dataset(N):
     
         # Encapsulate into a TensorDataset:
         dataset = torch.utils.data.TensorDataset(our_data, our_labels)
-        torch.save(dataset, 'testset{}.pt'.format(i), pickle_protocol=4)     
+        torch.save(dataset, 'dataset{}.pt'.format(i), pickle_protocol=4)     
         D = C+1
    
     return
