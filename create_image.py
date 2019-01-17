@@ -60,8 +60,8 @@ num_classes = num_circles_max + 1
 num_epochs = 2         # The number of times entire dataset is trained
 batch_size = 100       # The size of input data taken for one iteration
 learning_rate = 0.001  # The speed of convergence
-N = 1000            # Size of train dataset
-V = 1000        # Size of test dataset
+N = 10000            # Size of train dataset
+V = 10000        # Size of test dataset
 
 
 

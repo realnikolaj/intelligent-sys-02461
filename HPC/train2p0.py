@@ -285,7 +285,7 @@ for i in range(10):
         optimizer.zero_grad()                           # Intialize the hidden weight to all zeros
         loss.backward()                                 # Backward pass: compute the weight
         optimizer.step()                                # Optimizer: update the weights of hidden nodes
-        
+
         # Track the accuracy every 10 steps by testing the network on 1k test dataset:
         
      
@@ -318,7 +318,7 @@ for i in range(10):
                         outputt_j = outputss[head].to(device)
                         _, predicted = torch.max(outputt_j.data, 1)
                         correct[j] += (predicted == labels[:,head].type(tensor_type)).sum().item()
-                
+                        accuracy_list.append(100*correct[j] / V)
                 # Printing accuracy for each active head
 #                for j, head in enumerate(active_heads):  
 #                    print('Task {} --- Loss: {:.4f}, Accuracy: {:.2f} %'.format(head, individual_losses[j].item(), 100*correct[j] / V))        
