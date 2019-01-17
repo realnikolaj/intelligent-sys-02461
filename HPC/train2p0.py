@@ -323,4 +323,19 @@ for i in range(10):
 #                for j, head in enumerate(active_heads):  
 #                    print('Task {} --- Loss: {:.4f}, Accuracy: {:.2f} %'.format(head, individual_losses[j].item(), 100*correct[j] / V))        
             net.train()     
+# Defining plots
+#epoch_count = 
+fig, (ax1, ax2) = plt.subplots(nrows=2)
+
+ax1.plot(loss_list, 'r-')
+#ax1.plot(test_loss_list, 'b-')
+ax1.set(title='model loss', xlabel='epoch', ylabel='loss')
+#ax1.legend()
+
+ax2.plot(accuracy_list, 'r-')
+#ax2.plot(test_accuracy_list, 'b-')
+ax2.set(title='Accuracy', xlabel='epoch', ylabel='accuracy')
+#ax2.legend()
+
+fig.savefig('network_result.png', transparent=False, dpi=80, bbox_inches="tight")
 
