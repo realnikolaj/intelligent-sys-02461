@@ -17,7 +17,7 @@ from collections import Counter
 torch.cuda.empty_cache()
 # Initialize Hyper-parameters
 
-picture_dimension = 128 # Default is 28
+picture_dimension = 64 # Default is 28
 
 input_size = picture_dimension**2       # The image size = dimension squared
 hidden_size = picture_dimension**2     # The number of nodes at the hidden layer
@@ -28,7 +28,7 @@ num_circles_max = 20
 num_classes = num_circles_max + 1
    
 # Size of datasets
-N = 1000            # Size of train dataset
+N = 10000            # Size of train dataset
 V = 1      # Size of test dataset
 
 # number of colors
@@ -289,8 +289,8 @@ def create_dataset(N):
     
     # Split data!    
     D = 0
-    for i in range(10):
-        C = (N/10)*(i+1)
+    for i in range(2):
+        C = (N/2)*(i+1)
         
         
         # Convert to torch tensors
@@ -299,7 +299,7 @@ def create_dataset(N):
     
         # Encapsulate into a TensorDataset:
         dataset = torch.utils.data.TensorDataset(our_data, our_labels)
-        torch.save(dataset, 'dataset{}.pt'.format(i), pickle_protocol=4)     
+        torch.save(dataset, 'testset{}.pt'.format(i), pickle_protocol=4)     
         D = C+1
    
     return

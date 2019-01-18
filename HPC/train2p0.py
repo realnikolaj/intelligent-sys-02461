@@ -37,11 +37,11 @@ torch.cuda.empty_cache()
 # To switch between running on cpu and GPU (CUDA)
 # 0. CPU
 # 1. GPU 
-Acceleration_device = 0
+Acceleration_device = 1
 
 # Initialize Hyper-parameters
 
-picture_dimension = 128 # Default is 28
+picture_dimension = 64 # Default is 28
 
 input_size = picture_dimension**2       # The image size = dimension squared
 hidden_size = picture_dimension**2     # The number of nodes at the hidden layer
@@ -55,7 +55,7 @@ num_epochs = 10           # The number of times entire dataset is trained
 lr_decay_epoch = 100     # How many epochs before changing learning rate
 learning_rate = 0.001  # The speed of convergence
 batch_size = 100          # The size of input data taken for one iteration
-N = 10000 # Size of train dataset
+N = 100000 # Size of train dataset
 V = 10000  # Size of validation dataset
 
 F = 32     # Number of filters in first convolutional layer in the net
@@ -233,38 +233,29 @@ loss_list = []
 test_loss_list = []
 accuracy_list = []
 test_accuracy_list = []
-#for epoch in range(num_epochs):
-##    # Decay learning rate by a factor of 0.3 every lr_decay_epoch epochs.
-##    lr_scheduler(optimizer, epoch, init_lr=learning_rate, lr_decay_epoch=lr_decay_epoch)
-#    print("")
-#    print("Beginning new epoch." + ' Epoch [{}/{}].'.format(epoch + 1, num_epochs))
-#    print("Making pictures")
-#    train_dataset = create_dataset(N)
-#    print("Done making pictures")
-#    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,   
-#                                               batch_size=batch_size,
-#                                               shuffle=False)
-#    
-#    print("Training on 10k pictures, 100 steps")
+
+
 
     
-for i in range(10):
-    
+
+        
+
+for i in range(2):
+#    # Decay learning rate by a factor of 0.3 every lr_decay_epoch epochs.
+#    lr_scheduler(optimizer, epoch, init_lr=learning_rate, lr_decay_epoch=lr_decay_epoch)
     train_dataset = torch.load('dataset{}.pt'.format(i))
     test_dataset = torch.load('testset{}.pt'.format(i))
-
-    # Load the dataset with the DataLoader utility (giving us batches and other options)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                       batch_size=batch_size,
-                                       shuffle=False)
-    
+#    print("")
+#    print("Beginning new epoch." + ' Epoch [{}/{}].'.format(epoch + 1, num_epochs))
+    print("Loading file: [{}/2].".format(i))
+    print("Training a set of 50k pictures")
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,   
+                                           batch_size=batch_size,
+                                           shuffle=False)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                       batch_size=batch_size,
                                       shuffle=False)
-    
-    
     for i, (images, labels) in enumerate(train_loader):
-    
         # Wrap with torch.autograd.variable (may have some use, but seems unnecessary at the moment)
         images = Variable(images).float()
         images = images.to(device)
@@ -277,23 +268,19 @@ for i in range(10):
         outputs = net(images)
         individual_losses = [criterion(outputs[k].to(device), labels[:,k]) for k in active_heads]
         loss = sum(individual_losses)
-
-
         loss_list.append(loss.item())
+
+#        loss_list.append(loss.item())
         
         # Backprop and perform Adam optimisation
         optimizer.zero_grad()                           # Intialize the hidden weight to all zeros
         loss.backward()                                 # Backward pass: compute the weight
         optimizer.step()                                # Optimizer: update the weights of hidden nodes
-
+        
         # Track the accuracy every 10 steps by testing the network on 1k test dataset:
         
-     
-#        print("Done training {}/100 steps. Here's the data:".format(i))       
-#        print("Total loss: " + str(round(loss.item(),3)))
-        
         if (i + 1) % 100 == 0:   
-            print("Done training 100 steps. Here's the data:")
+            print("Done training 100 steps. Here's the data:")           
             print("Total loss: " + str(round(loss.item(),3)))
             
             # net.eval() will notify all our layers that we are in eval mode,
@@ -312,17 +299,18 @@ for i in range(10):
                     imagess = Variable(imagess).float()
                     imagess = imagess.to(device)
                     outputss = net(imagess)
-                    
+
                     # Counting correct outputs for each active head
                     for j, head in enumerate(active_heads):                        
                         outputt_j = outputss[head].to(device)
                         _, predicted = torch.max(outputt_j.data, 1)
                         correct[j] += (predicted == labels[:,head].type(tensor_type)).sum().item()
-                        accuracy_list.append(100*correct[j] / V)
+                        
                 # Printing accuracy for each active head
-#                for j, head in enumerate(active_heads):  
-#                    print('Task {} --- Loss: {:.4f}, Accuracy: {:.2f} %'.format(head, individual_losses[j].item(), 100*correct[j] / V))        
-            net.train()     
+                for j, head in enumerate(active_heads):
+                    accuracy_list.append(100*correct[j] / V)
+                    print('Task {} --- Loss: {:.4f}, Accuracy: {:.2f} %'.format(head, individual_losses[j].item(), 100*correct[j] / V))        
+            net.train()    
 # Defining plots
 #epoch_count = 
 fig, (ax1, ax2) = plt.subplots(nrows=2)
